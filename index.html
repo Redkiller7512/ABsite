@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="color-scheme" content="light dark">
+<title>Remote Browser</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#fff; --text:#1c2230; --muted:#667085; --line:#e3e6ec;
+  --brand:#2457f5; --brand-ink:#fff; --ok:#12805c; --warn:#b54708; --bad:#c0262d;
+  --radius:14px; --shadow:0 1px 3px rgba(16,24,40,.08),0 8px 24px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f131b; --panel:#171c27; --text:#e8ecf4; --muted:#98a2b3; --line:#283042; --brand:#5b84ff; --brand-ink:#0b1020; --ok:#3ccf9a; --warn:#f5a54a; --bad:#ff7a80; --shadow:none}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;min-height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);-webkit-tap-highlight-color:transparent}
+button.primary{background:var(--brand);color:var(--brand-ink);border-color:transparent;font-weight:600}
+button.danger{background:var(--bad);color:#fff;border-color:transparent;font-weight:600}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,select,textarea{width:100%;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+textarea{min-height:140px;font-family:ui-monospace,Menlo,monospace;font-size:14px}
+label{display:block;font-size:14px;font-weight:600;margin:14px 0 6px}
+h1,h2,h3{line-height:1.25;margin:0 0 10px}
+.hidden{display:none!important}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:10;background:var(--panel);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+header.top .wrap{display:flex;align-items:center;gap:12px;min-height:60px;flex-wrap:wrap}
+.logo{font-weight:700;font-size:18px;display:flex;align-items:center;gap:8px}
+.logo i{width:28px;height:28px;border-radius:8px;background:var(--brand);display:inline-block;position:relative}
+.logo i::after{content:"";position:absolute;inset:8px;border:2px solid var(--brand-ink);border-radius:50%}
+nav{display:flex;gap:4px;flex:1;overflow-x:auto}
+nav button{border:0;background:transparent;color:var(--muted);font-weight:600;white-space:nowrap}
+nav button[aria-current=true]{color:var(--brand);background:color-mix(in srgb,var(--brand) 12%,transparent)}
+.user{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+main{padding:20px 0 60px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+.grid{display:grid;gap:16px}
+@media(min-width:800px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.side{grid-template-columns:320px 1fr}}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:600;border:1px solid var(--line)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.badge.ok .dot{background:var(--ok)}.badge.warn .dot{background:var(--warn)}.badge.bad .dot{background:var(--bad)}
+.muted{color:var(--muted)} .small{font-size:14px}
+.notice{padding:12px 14px;border-radius:10px;font-size:14px;border:1px solid var(--line);background:color-mix(in srgb,var(--warn) 10%,var(--panel));margin-bottom:14px}
+/* login */
+#login{min-height:100dvh;display:grid;place-items:center;padding:20px}
+#login .card{width:100%;max-width:420px}
+/* session */
+.stage{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#000;display:flex;flex-direction:column;height:min(70dvh,720px);min-height:380px}
+.bar{display:flex;gap:8px;padding:8px;background:var(--panel);border-bottom:1px solid var(--line)}
+.bar input{flex:1}
+.view{flex:1;position:relative;background:#e9ecf2;color:#1c2230;display:grid;place-items:center;text-align:center;padding:24px}
+.view iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}
+.progress{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:12px}
+.progress b{display:block;height:100%;width:0;background:var(--brand);transition:width .3s}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat span{display:block;font-size:12px;color:var(--muted)}
+.stat strong{font-size:20px;font-variant-numeric:tabular-nums}
+.log{max-height:200px;overflow:auto;font:13px/1.6 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg)}
+.log div{white-space:pre-wrap}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font-size:13px;margin:8px 0}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.92em}
+.flow{display:flex;flex-direction:column;align-items:stretch;gap:0}
+.flow div{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 14px;text-align:center;font-weight:600}
+.flow div small{display:block;font-weight:400;color:var(--muted)}
+.flow span{text-align:center;color:var(--muted);line-height:1.4}
+ul.check{list-style:none;padding:0;margin:0}
+ul.check li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+ul.check input{width:22px;min-height:22px;margin-top:3px}
+</style>
+</head>
+<body>
+
+<!-- ===== CONNEXION ===== -->
+<section id="login">
+  <div class="card">
+    <div class="logo" style="margin-bottom:16px"><i></i> Remote Browser</div>
+    <h1>Connexion</h1>
+    <p class="muted small">Accédez à votre navigateur isolé depuis Safari, sans rien installer.</p>
+    <div class="notice" id="demoNotice"><strong>Mode démonstration.</strong> Aucune authentification réelle : n'importe quel identifiant fonctionne. En production, l'authentification doit être faite côté serveur (voir l'onglet « Déploiement »).</div>
+    <form id="loginForm" autocomplete="on">
+      <label for="email">Identifiant</label>
+      <input id="email" name="username" type="text" autocomplete="username" autocapitalize="none" required>
+      <label for="pwd">Mot de passe</label>
+      <input id="pwd" name="password" type="password" autocomplete="current-password" required>
+      <p id="loginErr" class="small" style="color:var(--bad);min-height:20px;margin:8px 0 0"></p>
+      <button class="primary" style="width:100%;margin-top:8px" type="submit">Se connecter</button>
+    </form>
+  </div>
+</section>
+
+<!-- ===== APPLICATION ===== -->
+<div id="app" class="hidden">
+<header class="top">
+  <div class="wrap">
+    <div class="logo"><i></i> Remote Browser</div>
+    <nav id="nav" aria-label="Navigation principale">
+      <button data-view="session" aria-current="true">Ma session</button>
+      <button data-view="admin">Administration</button>
+      <button data-view="archi">Architecture</button>
+      <button data-view="deploy">Déploiement</button>
+      <button data-view="tests">Tests iPad</button>
+    </nav>
+    <div class="user"><span id="who"></span><button id="logout">Déconnexion</button></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- SESSION -->
+<section id="v-session">
+  <div class="grid side">
+    <div>
+      <div class="card">
+        <h2>Navigateur distant</h2>
+        <p class="small muted">Une session Chromium isolée est créée à la demande et détruite à la fermeture.</p>
+        <p>État : <span id="stateBadge" class="badge"><i class="dot"></i><span id="stateTxt">Aucune session</span></span></p>
+        <div class="progress hidden" id="prog"><b></b></div>
+        <div class="stats">
+          <div class="stat"><span>Durée</span><strong id="tElapsed">00:00</strong></div>
+          <div class="stat"><span>Fermeture si inactif</span><strong id="tIdle">--:--</strong></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="primary" id="btnStart">Lancer mon navigateur</button>
+          <button class="danger hidden" id="btnStop">Fermer la session</button>
+        </div>
+        <p class="small muted" style="margin-top:12px">Fermeture automatique après <b id="cfgIdle"></b> min d'inactivité ou <b id="cfgMax"></b> min au total. Les données temporaires sont supprimées à la fermeture.</p>
+      </div>
+      <div class="card">
+        <h3>Journal</h3>
+        <div class="log" id="log" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="stage">
+        <form class="bar" id="urlForm">
+          <input id="url" type="text" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Adresse (ex. https://example.org)" disabled>
+          <button type="submit" id="go" disabled>Aller</button>
+        </form>
+        <div class="view" id="view">
+          <div id="placeholder">
+            <h3>Aucune session active</h3>
+            <p class="muted">Cliquez sur « Lancer mon navigateur ».</p>
+          </div>
+        </div>
+      </div>
+      <p class="small muted" id="viewHint"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ADMIN -->
+<section id="v-admin" class="hidden">
+  <div class="grid g2">
+    <div class="card">
+      <h2>Politique de sessions</h2>
+      <label for="aIdle">Inactivité maximale (minutes)</label>
+      <input id="aIdle" type="number" min="1" max="240">
+      <label for="aMax">Durée maximale d'une session (minutes)</label>
+      <input id="aMax" type="number" min="5" max="720">
+      <label for="aKasm">URL du serveur Kasm / session (optionnel)</label>
+      <input id="aKasm" type="url" placeholder="https://kasm.mondomaine.fr/..." autocapitalize="none">
+      <p class="small muted">Si renseignée, la session s'affiche dans un cadre intégré. Laissez vide pour la simulation.</p>
+    </div>
+    <div class="card">
+      <h2>Contrôle des destinations</h2>
+      <p class="small muted">Tout est autorisé, sauf les domaines de la liste noire ci-dessous.</p>
+      <label>Toujours bloqués (anti-récursion, non modifiable)</label>
+      <ul class="small" id="autoBlock" style="margin:0 0 4px;padding-left:20px"></ul>
+      <label for="aList">Votre liste noire (un domaine par ligne, sous-domaines inclus)</label>
+      <textarea id="aList" spellcheck="false" autocapitalize="none"></textarea>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="primary" id="saveCfg">Enregistrer</button>
+        <button id="resetCfg">Réinitialiser</button>
+        <span id="saved" class="small muted" style="align-self:center"></span>
+      </div>
+    </div>
+  </div>
+  <div class="notice"><strong>Important :</strong> ce panneau configure uniquement la démonstration, dans votre navigateur. Le filtrage réel, y compris le blocage de votre propre portail pour empêcher un « navigateur dans un navigateur », doit être appliqué côté serveur (proxy Squid, politique de filtrage Kasm ou règles réseau du conteneur), sinon la barre d'adresse de Chromium le contourne. Exemple Squid dans l'onglet « Déploiement ».</div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="v-archi" class="hidden">
+  <div class="grid g2">
+    <div class="card">
+      <h2>Flux de l'architecture</h2>
+      <div class="flow">
+        <div>iPad / Safari <small>Interface Web responsive</small></div><span>↓ HTTPS</span>
+        <div>Reverse proxy + TLS <small>Caddy ou Nginx, Let's Encrypt</small></div><span>↓</span>
+        <div>Authentification <small>Kasm / SSO (OIDC, SAML, LDAP)</small></div><span>↓</span>
+        <div>Gestionnaire de sessions <small>Kasm Manager + API</small></div><span>↓</span>
+        <div>Serveur Linux + Docker <small>Quotas CPU / RAM par conteneur</small></div><span>↓</span>
+        <div>Conteneur Chromium isolé <small>Un par utilisateur, détruit à la fermeture</small></div><span>↓</span>
+        <div>Filtrage des destinations <small>Proxy sortant / règles réseau</small></div><span>↓</span>
+        <div>Internet</div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Ce que fait ce site, et ce qu'il ne fait pas</h3>
+        <p class="small">Ce site est le <b>portail (frontend)</b> : connexion, lancement, fermeture, règles d'affichage. Le <b>vrai navigateur distant</b> (streaming de l'écran, souris, clavier) est fourni par un serveur comme Kasm Workspaces. Une page HTML seule ne peut pas faire tourner Chromium à distance.</p>
+      </div>
+      <div class="card">
+        <h3>Dimensionnement indicatif</h3>
+        <table>
+          <tr><th>Sessions simultanées</th><th>RAM</th><th>CPU</th></tr>
+          <tr><td>5 (prototype)</td><td>~8 Go</td><td>4 cœurs</td></tr>
+          <tr><td>20</td><td>~32 Go</td><td>8 à 12 cœurs</td></tr>
+          <tr><td>50</td><td>~64–96 Go</td><td>16+ cœurs</td></tr>
+        </table>
+        <p class="small muted">Estimation : environ 1,5 à 2 Go de RAM par session Chromium. À mesurer sur votre usage réel.</p>
+      </div>
+      <div class="card">
+        <h3>Solutions à comparer</h3>
+        <table>
+          <tr><th>Solution</th><th>Type</th><th>Remarque</th></tr>
+          <tr><td>Kasm Workspaces</td><td>Auto-hébergé</td><td>Candidat principal ; vérifier les limites de la Community Edition</td></tr>
+          <tr><td>Apache Guacamole</td><td>Open source</td><td>Bureau distant (RDP/VNC), plus de montage à faire</td></tr>
+          <tr><td>Cloudflare Browser Isolation</td><td>Service payant</td><td>Solution professionnelle, hors budget zéro</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEPLOIEMENT -->
+<section id="v-deploy" class="hidden">
+  <div class="grid g2">
+    <div>
+      <div class="card">
+        <h2>1. Installer Kasm Workspaces</h2>
+        <p class="small">Sur un serveur Linux (Ubuntu récent), avec Docker, au moins 4 cœurs, 8 Go de RAM et du swap. Reprenez les commandes à jour depuis la documentation officielle (<code>kasm.com/docs</code>), la version change régulièrement :</p>
+<pre>cd /tmp
+curl -O https://kasm-static-content.s3.amazonaws.com/kasm_release_&lt;version&gt;.tar.gz
+tar -xf kasm_release_*.tar.gz
+sudo bash kasm_release/install.sh</pre>
+        <p class="small muted">Notez les mots de passe administrateur affichés à la fin de l'installation.</p>
+      </div>
+      <div class="card">
+        <h2>2. Héberger ce portail</h2>
+        <p class="small">Ce fichier est statique. Placez-le derrière un reverse proxy HTTPS, par exemple avec Caddy :</p>
+<pre>portail.mondomaine.fr {
+  root * /var/www/portail
+  file_server
+  header {
+    Strict-Transport-Security "max-age=31536000"
+    X-Content-Type-Options nosniff
+    Referrer-Policy no-referrer
+  }
+}</pre>
+        <p class="small">Pour intégrer Kasm dans un cadre (iframe), il faudra autoriser l'intégration côté Kasm et utiliser un sous-domaine du même site. Sinon, faites ouvrir Kasm dans un nouvel onglet.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>2 bis. Blocage anti-récursion côté serveur</h2>
+        <p class="small">Dans Kasm, faites passer le trafic de Chromium par un proxy qui refuse votre portail et votre serveur Kasm (exemple Squid, à adapter) :</p>
+<pre>acl portail dstdomain .portail.mondomaine.fr
+acl kasm    dstdomain .kasm.mondomaine.fr
+acl local   dst 127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+http_access deny portail
+http_access deny kasm
+http_access deny local
+http_access allow all</pre>
+        <p class="small muted">Les adresses privées sont bloquées aussi pour empêcher l'accès à votre réseau interne depuis les sessions.</p>
+      </div>
+      <div class="card">
+        <h2>3. Authentification réelle</h2>
+        <p class="small">Le mode démo de ce portail n'est pas sécurisé. En production :</p>
+        <ul class="small">
+          <li>laissez Kasm gérer les comptes (ou SSO / LDAP / OIDC) ;</li>
+          <li>activez l'authentification à deux facteurs ;</li>
+          <li>ne stockez jamais de mot de passe dans du JavaScript côté client ;</li>
+          <li>si vous avez besoin de lancer des sessions depuis ce portail, ajoutez un petit backend qui appelle l'API Kasm avec une clé gardée côté serveur.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>4. Politique de conservation</h2>
+        <ul class="small">
+          <li>conteneurs non persistants : tout est effacé à la fermeture ;</li>
+          <li>pas de profil persistant au prototype ;</li>
+          <li>téléchargements : désactiver ou limiter selon votre besoin ;</li>
+          <li>journaux : durée de conservation à définir (RGPD).</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>5. Points à vérifier</h2>
+        <ul class="small">
+          <li><b>Licence :</b> la Community Edition de Kasm limite, à ma connaissance, le nombre de sessions simultanées (de l'ordre de 5). À confirmer sur le site de Kasm avant de viser 50 utilisateurs.</li>
+          <li><b>Budget zéro :</b> il faut tout de même un serveur. Un serveur personnel ou un palier gratuit de cloud suffira pour un prototype, pas pour 50 sessions.</li>
+          <li><b>Usage et droit :</b> vérifiez les conditions d'utilisation des sites visités et la réglementation applicable à votre service.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTS -->
+<section id="v-tests" class="hidden">
+  <div class="card" style="max-width:640px">
+    <h2>Checklist de test Safari / iPad</h2>
+    <p class="small muted">Cochez au fur et à mesure. L'état est conservé dans cet appareil.</p>
+    <ul class="check" id="checks"></ul>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+"use strict";
+/* ---------- Configuration ---------- */
+const DEFAULTS = {
+  idleMin: 15, maxMin: 120, kasmUrl: "",
+  domains: []
+};
+const TESTS = ["Tactile : toucher et glisser","Clavier virtuel : saisie dans un champ","Défilement d'une longue page","Zoom (pincer)","Lecture audio","Téléchargement d'un fichier","Ouverture de plusieurs onglets","Rotation portrait / paysage","Mode plein écran","Copier-coller","Perte puis reprise du Wi-Fi","Fermeture automatique après inactivité"];
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+let cfg = Object.assign({}, DEFAULTS, store.get("rb_cfg2", {}));
+
+/* Protection anti-récursion : le portail ne doit jamais s'ouvrir dans un cadre (navigateur dans un navigateur) */
+if(window.top !== window.self){
+  document.body.innerHTML = '<p style="font:16px system-ui;padding:24px">Ce portail ne peut pas être ouvert dans un cadre : protection contre l\'imbrication de navigateurs.</p>';
+  throw new Error("Imbrication bloquée");
+}
+
+/* ---------- Navigation ---------- */
+const views = ["session","admin","archi","deploy","tests"];
+function show(v){
+  views.forEach(n => $("v-"+n).classList.toggle("hidden", n!==v));
+  document.querySelectorAll("#nav button").forEach(b => b.setAttribute("aria-current", b.dataset.view===v));
+}
+$("nav").addEventListener("click", e => { const b = e.target.closest("button"); if(b) show(b.dataset.view); });
+
+/* ---------- Authentification (démo) ---------- */
+let user = null;
+function enter(name){
+  user = name; $("who").textContent = name;
+  $("login").classList.add("hidden"); $("app").classList.remove("hidden");
+  refreshCfgUI(); show("session");
+}
+$("loginForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const n = $("email").value.trim();
+  if(!n || $("pwd").value.length < 1){ $("loginErr").textContent = "Identifiant et mot de passe requis."; return; }
+  $("loginErr").textContent = ""; $("pwd").value = ""; enter(n);
+});
+$("logout").addEventListener("click", () => {
+  if(state !== "idle") stopSession("Déconnexion de l'utilisateur");
+  user = null; $("app").classList.add("hidden"); $("login").classList.remove("hidden"); $("email").value = "";
+});
+
+/* ---------- Contrôle des destinations ---------- */
+function parseUrl(raw){
+  let s = raw.trim(); if(!s) return null;
+  if(!/^[a-z]+:\/\//i.test(s)) s = "https://" + s;
+  try{ const u = new URL(s); return /^https?:$/.test(u.protocol) ? u : null; }catch(e){ return null; }
+}
+function hostMatches(host, dom){ dom = dom.toLowerCase(); return host === dom || host.endsWith("." + dom); }
+/* Domaines bloqués d'office : ce portail, le serveur Kasm et les adresses locales */
+function autoBlocked(){
+  const s = new Set(["localhost","127.0.0.1","[::1]","0.0.0.0"]);
+  if(location.hostname) s.add(location.hostname.toLowerCase());
+  try{ if(cfg.kasmUrl) s.add(new URL(cfg.kasmUrl).hostname.toLowerCase()); }catch(e){}
+  return [...s];
+}
+function blockedReason(u){
+  const host = u.hostname.toLowerCase();
+  if(autoBlocked().some(d => hostMatches(host, d))) return "auto";
+  if(cfg.domains.some(d => hostMatches(host, d))) return "liste";
+  return null;
+}
+
+/* ---------- Session ---------- */
+let state = "idle", t0 = 0, lastAct = 0, tick = null, startTimer = null;
+const stateMap = {
+  idle:["Aucune session",""], starting:["Démarrage…","warn"], active:["Session active","ok"], closing:["Fermeture…","warn"]
+};
+function setState(s){
+  state = s; const [txt, cls] = stateMap[s];
+  $("stateTxt").textContent = txt;
+  $("stateBadge").className = "badge " + cls;
+  $("btnStart").classList.toggle("hidden", s !== "idle");
+  $("btnStop").classList.toggle("hidden", s !== "active");
+  const on = s === "active";
+  $("url").disabled = !on; $("go").disabled = !on;
+}
+function log(msg){
+  const d = document.createElement("div");
+  d.textContent = new Date().toLocaleTimeString("fr-FR") + "  " + msg;
+  $("log").appendChild(d); $("log").scrollTop = $("log").scrollHeight;
+}
+const fmt = s => { s = Math.max(0, Math.floor(s)); return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0"); };
+
+function startSession(){
+  if(state !== "idle") return;
+  setState("starting");
+  log("Demande de session pour " + user);
+  const p = $("prog"); p.classList.remove("hidden");
+  const bar = p.firstElementChild; let pct = 0;
+  const steps = ["Réservation de ressources (CPU/RAM)","Création du conteneur isolé","Démarrage de Chromium","Connexion du flux d'affichage"];
+  let i = 0;
+  startTimer = setInterval(() => {
+    pct += 25; bar.style.width = pct + "%"; log(steps[i++]);
+    if(pct >= 100){ clearInterval(startTimer); p.classList.add("hidden"); bar.style.width = "0"; activate(); }
+  }, 600);
+}
+function activate(){
+  t0 = lastAct = Date.now(); setState("active");
+  log("Session active (identifiant simulé : " + Math.random().toString(36).slice(2,10) + ")");
+  const view = $("view"); view.innerHTML = "";
+  if(cfg.kasmUrl){
+    const f = document.createElement("iframe");
+    f.src = cfg.kasmUrl; f.title = "Navigateur distant"; f.allow = "clipboard-read; clipboard-write; fullscreen; autoplay";
+    view.appendChild(f);
+    $("viewHint").textContent = "Session affichée depuis : " + cfg.kasmUrl;
+  } else {
+    view.innerHTML = '<div><h3>Session simulée</h3><p>Saisissez une adresse ci-dessus pour tester le contrôle des destinations.<br>Branchez Kasm dans « Administration » pour afficher un vrai Chromium.</p></div>';
+    $("viewHint").textContent = "Mode simulation : aucun navigateur réel n'est démarré.";
+  }
+  $("url").focus();
+  tick = setInterval(onTick, 1000); onTick();
+}
+function onTick(){
+  const now = Date.now();
+  $("tElapsed").textContent = fmt((now - t0)/1000);
+  const idleLeft = cfg.idleMin*60 - (now - lastAct)/1000;
+  const maxLeft = cfg.maxMin*60 - (now - t0)/1000;
+  $("tIdle").textContent = fmt(idleLeft);
+  if(maxLeft <= 0) stopSession("Durée maximale atteinte");
+  else if(idleLeft <= 0) stopSession("Inactivité : fermeture automatique");
+}
+function stopSession(reason){
+  if(state !== "active") return;
+  clearInterval(tick); setState("closing");
+  log(reason || "Fermeture demandée");
+  log("Arrêt de Chromium");
+  setTimeout(() => {
+    log("Suppression du conteneur et des données temporaires (cookies, cache, historique)");
+    $("view").innerHTML = '<div><h3>Session fermée</h3><p class="muted">Les données temporaires ont été supprimées.</p></div>';
+    $("viewHint").textContent = ""; $("url").value = "";
+    $("tElapsed").textContent = "00:00"; $("tIdle").textContent = "--:--";
+    setState("idle");
+  }, 700);
+}
+["pointerdown","keydown","scroll"].forEach(ev => document.addEventListener(ev, () => { if(state === "active") lastAct = Date.now(); }, {passive:true}));
+
+$("btnStart").addEventListener("click", startSession);
+$("btnStop").addEventListener("click", () => stopSession("Fermeture demandée par l'utilisateur"));
+$("urlForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const u = parseUrl($("url").value);
+  if(!u){ log("Adresse invalide"); return; }
+  const why = blockedReason(u);
+  if(why){
+    const msg = why === "auto" ? "adresse du portail ou du serveur (anti-récursion)" : "liste noire";
+    log("BLOQUÉ : " + u.hostname + " (" + msg + ")");
+    alert("Destination bloquée : " + u.hostname + "\nMotif : " + msg);
+    return;
+  }
+  log("Autorisé : " + u.href);
+  if(!cfg.kasmUrl) $("view").innerHTML = '<div><h3>' + u.hostname.replace(/[<>&]/g,"") + '</h3><p class="muted">Destination autorisée. En production, Chromium chargerait cette page sur le serveur.</p></div>';
+});
+
+/* ---------- Administration ---------- */
+function refreshCfgUI(){
+  $("aIdle").value = cfg.idleMin; $("aMax").value = cfg.maxMin; $("aKasm").value = cfg.kasmUrl;
+  $("aList").value = cfg.domains.join("\n");
+  $("autoBlock").innerHTML = autoBlocked().map(d => "<li><code>" + d.replace(/[<>&]/g,"") + "</code></li>").join("");
+  $("cfgIdle").textContent = cfg.idleMin; $("cfgMax").textContent = cfg.maxMin;
+}
+$("saveCfg").addEventListener("click", () => {
+  const k = $("aKasm").value.trim();
+  if(k && !/^https:\/\//i.test(k)){ $("saved").textContent = "L'URL doit commencer par https://"; return; }
+  cfg = {
+    idleMin: Math.min(240, Math.max(1, +$("aIdle").value || DEFAULTS.idleMin)),
+    maxMin: Math.min(720, Math.max(5, +$("aMax").value || DEFAULTS.maxMin)),
+    kasmUrl: k,
+    domains: $("aList").value.split("\n").map(s => s.trim().toLowerCase().replace(/^https?:\/\//,"").replace(/\/.*$/,"")).filter(Boolean)
+  };
+  store.set("rb_cfg2", cfg); refreshCfgUI(); $("saved").textContent = "Enregistré.";
+  setTimeout(() => $("saved").textContent = "", 2500);
+});
+$("resetCfg").addEventListener("click", () => { cfg = Object.assign({}, DEFAULTS); store.set("rb_cfg2", cfg); refreshCfgUI(); });
+
+/* ---------- Checklist ---------- */
+(function(){
+  const done = store.get("rb_checks", {});
+  const ul = $("checks");
+  TESTS.forEach((t, i) => {
+    const li = document.createElement("li");
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "c"+i; cb.checked = !!done[i];
+    cb.addEventListener("change", () => { done[i] = cb.checked; store.set("rb_checks", done); });
+    const lb = document.createElement("label"); lb.htmlFor = cb.id; lb.textContent = t; lb.style.cssText = "margin:0;font-weight:400";
+    li.append(cb, lb); ul.appendChild(li);
+  });
+})();
+setState("idle");
+</script>
+</body>
+</html>
